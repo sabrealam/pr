@@ -28,3 +28,10 @@ jobs:
       - name: Run ESLint and Reviewdog
         run: |
           npx eslint . --format=unix | reviewdog -f=unix -reporter=github-pr-review
+          
+      - name: Comment on PR with review results
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          msg: |
+            ### ESLint Review
+            ${{ steps.lint.outputs.eslint-output }}
