@@ -1,53 +1,37 @@
-name: Automated PR Review and Fixes
+name: PR Review with Reviewdog
 
 on:
   pull_request:
-    types: [opened, synchronize]
-
+    paths:
+      - '**.js'  # Modify this according to your project type (e.g., .js for JavaScript files)
 jobs:
-  review:
+  reviewdog:
     runs-on: ubuntu-latest
-
+    
     steps:
-      # Step 1: Checkout the code
+      # Check out your code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Set up Node.js (or your runtime environment)
+      # Set up Node.js (if you're using Node.js for ESLint or any other tool)
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: '16'  # You can change the version as needed
 
-      # Step 3: Install dependencies
+      # Install dependencies (e.g., ESLint or any linter you use)
       - name: Install dependencies
-        run: npm install # Change if you're using another package manager
-
-      # Step 4: Run Linter to Review the Code
-      - name: Run Linter
-        id: lint
         run: |
-          npx eslint . --output-file eslint-report.txt || true
+          npm install
 
-      # Step 5: Post Comments for Issues Found
-      - name: Post Linter Comments
-        uses: reviewdog/action-eslint@v1
+      # Run the linter and pass results to Reviewdog
+      - name: Run ESLint and Reviewdog
+        run: |
+          npx eslint . --format=unix | reviewdog -f=unix -reporter=github-pr-review
+          
+      - name: Comment on PR with review results
+        uses: marocchino/sticky-pull-request-comment@v2
         with:
-          github_token: ${{ secrets.GH_TOKEN }}
-          reporter: github-pr-review
-          level: error # Options: info, warning, error
-          filter_mode: added # Only comment on lines changed in the PR
-
-      # Step 6: Automatically Fix Linter Issues
-      - name: Auto Fix Lint Issues
-        run: npx eslint . --fix
-
-      # Step 7: Commit Fixed Code Back to the PR
-      - name: Commit and Push Fixes
-        if: always()
-        run: |
-          git config --local user.name "GitHub Action Bot"
-          git config --local user.email "bot@users.noreply.github.com"
-          git add .
-          git commit -m "Auto-fixed linting issues"
-          git push
+          msg: |
+            ### ESLint Review
+            ${{ steps.lint.outputs.eslint-output }}
