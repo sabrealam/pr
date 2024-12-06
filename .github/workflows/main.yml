@@ -1,0 +1,53 @@
+name: Automated PR Review and Fixes
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Node.js (or your runtime environment)
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: npm install # Change if you're using another package manager
+
+      # Step 4: Run Linter to Review the Code
+      - name: Run Linter
+        id: lint
+        run: |
+          npx eslint . --output-file eslint-report.txt || true
+
+      # Step 5: Post Comments for Issues Found
+      - name: Post Linter Comments
+        uses: reviewdog/action-eslint@v1
+        with:
+          github_token: ${{ secrets.GH_TOKEN }}
+          reporter: github-pr-review
+          level: error # Options: info, warning, error
+          filter_mode: added # Only comment on lines changed in the PR
+
+      # Step 6: Automatically Fix Linter Issues
+      - name: Auto Fix Lint Issues
+        run: npx eslint . --fix
+
+      # Step 7: Commit Fixed Code Back to the PR
+      - name: Commit and Push Fixes
+        if: always()
+        run: |
+          git config --local user.name "GitHub Action Bot"
+          git config --local user.email "bot@users.noreply.github.com"
+          git add .
+          git commit -m "Auto-fixed linting issues"
+          git push
